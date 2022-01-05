@@ -59,6 +59,25 @@ All that is left to do is drain the contract. We will do this by calling `withdr
 fallback.withdraw({"from": account})
 ```
 We have now successfully passed the level! 
-This level shows us that anyone is able to call the fallback function of a contract and execute any code that is in said fallback function. Moral of the story: Be wary of putting code that modifiers sensitive storage variables in your fallback function. 
+This level shows us that anyone is able to call the fallback function of a contract and execute any code that is in said fallback function. Moral of the story: Be wary of putting code that modifiers sensitive state variables in your fallback function. 
 
+## Level 2: Fallout
+To pass this level we need to claim ownership of the contract. We can see that the owner variable only gets modified once in the constructor:
+```solidity
+function Fal1out() public payable {
+    owner = msg.sender;
+    allocations[owner] = msg.value;
+  }
+```
+We can see that this constructor does not use the `constructor` keyword. Therefore, the name of the constructor function must match the name of the contract in order to be executed as a constructor. 
+Note that since `Solidity v0.4.22` this method is now deprecated. Since this contract does not use the `constructor` keyword, the Fal1out function can be seen as any normal function. We can then call this function and become the owner of the contract.
+```python
+fallout.Fal1out({"from": account})
+```
+Now we can check that we are the owner of the contract:
+```python
+print(fallout.owner() == account.address)
+```
+We have successfully passed this level!
+Moral of the story: Use the `constructor` keyword.
 

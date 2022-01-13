@@ -1,4 +1,4 @@
-from brownie import accounts, SimpleToken, Recovery
+from brownie import accounts, config, SimpleToken, Recovery
 from web3 import Web3
 
 # load account
@@ -41,11 +41,10 @@ def exploit():
     tx.wait(1)
 
     # set up web3
-    w3 = Web3(
-        Web3.HTTPProvider(
-            "https://eth-rinkeby.alchemyapi.io/v2/WVudGvq89ALUL1MOaXahRdH0E4Yu9cys"
-        )
-    )
+    rpc_url = config["wallets"]["endpoint"]
+    w3 = Web3(Web3.HTTPProvider(rpc_url))
+
+    # get bytecode of contract
     global code
     code_bytes = w3.eth.get_code(simple_token.address)
     code = Web3.toHex(code_bytes)

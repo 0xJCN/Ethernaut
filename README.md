@@ -431,7 +431,7 @@ print(Force.balance() > 0)
 We have successfully passed the level!
 Moral of the story: **add this**
 
-# Level 8: Vault
+##  Level 8: Vault
 To pass this level we must unlock the Vault contract. In other words we must change the value of the `locked` state variable to false. This is the Vault contract:
 ```solidiy
 pragma solidity ^0.6.0;

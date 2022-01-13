@@ -1,4 +1,4 @@
-from brownie import accounts, Motorbike, Engine, Hacker
+from brownie import accounts, config, Motorbike, Engine, Hacker
 from web3 import Web3
 
 # load account
@@ -21,12 +21,11 @@ def level_completed():
 
 
 def exploit():
+    # set up web3
+    rpc_url = config["wallets"]["endpoint"]
+    w3 = Web3(Web3.HTTPProvider(rpc_url))
+
     # get address of engine
-    w3 = Web3(
-        Web3.HTTPProvider(
-            "https://eth-rinkeby.alchemyapi.io/v2/WVudGvq89ALUL1MOaXahRdH0E4Yu9cys"
-        )
-    )
     address_bytes = w3.eth.get_storage_at(instance_address, slot)
     address_hex = Web3.toHex(address_bytes)
     print(address_hex)

@@ -1,4 +1,4 @@
-from brownie import accounts, Vault
+from brownie import accounts, config, Vault
 from web3 import Web3
 
 # load account
@@ -18,11 +18,8 @@ def level_completed():
 
 def exploit():
     # set up web3
-    w3 = Web3(
-        Web3.HTTPProvider(
-            "https://eth-rinkeby.alchemyapi.io/v2/WVudGvq89ALUL1MOaXahRdH0E4Yu9cys"
-        )
-    )
+    rpc_url = config["wallets"]["endpoint"]
+    w3 = Web3(Web3.HTTPProvider(rpc_url))
 
     # get password at storage slot 1
     password = w3.eth.get_storage_at(instance_address, 1)

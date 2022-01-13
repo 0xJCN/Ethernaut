@@ -19,11 +19,8 @@ def level_completed():
 
 def exploit():
     # set up web3
-    w3 = Web3(
-        Web3.HTTPProvider(
-            "https://eth-rinkeby.alchemyapi.io/v2/WVudGvq89ALUL1MOaXahRdH0E4Yu9cys"
-        )
-    )
+    rpc_url = config["wallets"]["endpoint"]
+    w3 = Web3(Web3.HTTPProvider(rpc_url))
 
     # compute signature of "pwn()"
     sig_bytes = Web3.keccak(text="pwn()")
